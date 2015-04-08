@@ -56,8 +56,8 @@ def count_packets(traffic_cap):
 def convert_traffic(traffic_cap):
   #raw_data = rdpcap("traffic")
   #print raw_data
-  pairs = list((p[IP].src, p[IP].dst) for p in PcapReader(traffic_cap) if IP in p)
-  return pairs
+  traffic_data = list((p[IP].src, p[IP].dst, p[IP].payload) for p in PcapReader(traffic_cap) if IP in p)
+  return traffic_data
 
 # TODO: make gpudb_ip an argument
 def add_data(traffic_data):
@@ -72,6 +72,7 @@ def add_data(traffic_data):
                              {"name":"y","type":"double"},
                              {"name":"src","type":"string"},
                              {"name":"dst","type":"string"}
+                             {"name":"payload","type":"string"}
                           ]
                        }"""
   
@@ -84,22 +85,25 @@ def add_data(traffic_data):
   x = 1;y = 1 
   encoded_datums = []
   for e in traffic_data: 
-    datum = collections.OrderedDict([('x',x), ('y',y), ('src',e[0]),('dst',e[1])])
+    datum = collections.OrderedDict([('x',x), ('y',y), ('src',e[0]),('dst',e[1]),('payload',e[2])])
     encoded_datum = gpudb.encode_datum(type_definition,datum)
     encoded_datums.append(encoded_datum)
-    x+=1
-    y+=1
+    x+=1;y+=1
      
   gpudb.do_bulk_add(set_id, encoded_datums)
 
-  lower_bound = 1
-  upper_bound = 1
+  return set_id
+  
+# Query GPUdb
+# TODO: define different machine learning queries
+def query(set_id):
+  print "Querying ..."
+  lower_bound = 1; upper_bound = 1
   attribute_key = "x"
   result_set_id = str(uuid.uuid1())
+  # Bounding Box Query
   retobj = gpudb.do_filter_by_bounds(set_id, lower_bound, attribute_key, upper_bound, result_set_id)
   print retobj
-
-
 
 def main(argv):
   traffic_cap = ''
@@ -118,14 +122,13 @@ def main(argv):
      elif opt in ("-o", "--ofile"):
         stats = arg
 
-
   try:
     tc = open(traffic_cap)
     print "Traffic was already captured in the file: ", traffic_cap 
     # Count packets 
     # count_packets(traffic_cap)
   except IOError:
-    print traffic_cap + " not present. Capturing Traffic..."
+    print traffic_cap + " not present. Capturing Traffic ..."
     # Capture Packets in a pcap file.
     capture_traffic(traffic_cap)
     print 'Traffic Captured in the file: "', traffic_cap
@@ -140,10 +143,13 @@ def main(argv):
   traffic_data = convert_traffic(traffic_cap)
 
   # TODO: Add Data to GPUdb
-  add_data(traffic_data)
+  set_id = add_data(traffic_data)
   print "Data stored at GPUdb"
 
   # Query GPUdb server
+  query(set_id)
+ 
+  # TODO: Record Stats of the query
   print 'Sats Recorded in the file: "', stats
 
 
