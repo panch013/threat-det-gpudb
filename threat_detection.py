@@ -163,17 +163,17 @@ def main(argv):
   query(set_id, gpudb)
  
   # TODO: Record Stats of the query
-  print 'Sats Recorded in the file: "', stats
+  print 'Stats Recorded in the file: "', stats
 
 
 #TODO: make packet capture real time
 # callback function - called for every packet
-def traffic_monitor_callbak(pkt):
+def traffic_monitor_callback(pkt):
     if IP in pkt:
         print pkt.sprintf("%IP.len%")
 
 # capture traffic for 10 seconds
 def capture_traffic_rt(traffic_cap):
-  sniff(iface="eth0", prn=traffic_monitor_callbak, store=0, timeout=10)
+  sniff(iface="eth0", prn=traffic_monitor_callback, store=0, timeout=10)
 if __name__ == "__main__":
    main(sys.argv[1:])
